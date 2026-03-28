@@ -117,7 +117,11 @@ class BatchFunctionRewardManagerMixin:
             response_str = self.tokenizer.decode(
                 valid_response_ids, skip_special_tokens=self.config.skip_special_tokens
             )
-            prompt_str = self.tokenizer.decode(input_ids[i][:cur_response_length], skip_special_tokens=False)
+            # prompt_str = self.tokenizer.decode(input_ids[i][:cur_response_length], skip_special_tokens=False)
+            # 提取 prompt 部分：input_ids 长度 = prompt + response
+            prompt_len = input_ids.shape[1] - response_ids.shape[1]
+            prompt_ids = input_ids[i][:prompt_len]
+            prompt_str = self.tokenizer.decode(prompt_ids, skip_special_tokens=True)
             p_text=evaluate_generation_strongreject(prompt_str, response_str)
             reward_inputs.append(
                 {

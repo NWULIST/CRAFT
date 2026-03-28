@@ -16,15 +16,19 @@ W_CONS   = 0.2
 ALPHA, BETA, GAMMA = 1.0, 1.0, 0.5
 
 # Precomputed prototypes from contrastive learning
-MU_SAFE   = torch.from_numpy(np.load("/projects/p32013/neurons/RA-GRPO/outputs/mu_safe.npy")).float()
-MU_UNSAFE = torch.from_numpy(np.load("/projects/p32013/neurons/RA-GRPO/outputs/mu_unsafe.npy")).float()
-MU_RETHINK= torch.from_numpy(np.load("/projects/p32013/neurons/RA-GRPO/outputs/mu_rethink.npy")).float()
+# MU_SAFE   = torch.from_numpy(np.load("/projects/p32013/neurons/RA-GRPO/outputs/mu_safe.npy")).float()
+# MU_UNSAFE = torch.from_numpy(np.load("/projects/p32013/neurons/RA-GRPO/outputs/mu_unsafe.npy")).float()
+# MU_RETHINK= torch.from_numpy(np.load("/projects/p32013/neurons/RA-GRPO/outputs/mu_rethink.npy")).float()
 
 # ------------- Global model cache (load once) -------------
 _CACHED_MODEL = None
 _CACHED_PROJECTION_HEAD = None
 _CACHED_SAFETY_HEAD = None
 _CACHED_MODEL_PATH = None
+
+_CACHED_MU_SAFE = None
+_CACHED_MU_UNSAFE = None
+_CACHED_MU_RETHINK = None
 
 def cosine(z, mu):
     return (F.normalize(z, dim=-1) * F.normalize(mu, dim=-1)).sum(-1)
@@ -56,10 +60,11 @@ class SafetyHead(nn.Module):
 
 @torch.no_grad()
 def latent_reward(z: torch.Tensor) -> torch.Tensor:
+    global _CACHED_MU_SAFE, _CACHED_MU_UNSAFE, _CACHED_MU_RETHINK
     return (
-        ALPHA * cosine(z, MU_SAFE)
-        - BETA * cosine(z, MU_UNSAFE)
-        + GAMMA * cosine(z, MU_RETHINK)
+        ALPHA * cosine(z, _CACHED_MU_SAFE.to(z.device))
+        - BETA * cosine(z, _CACHED_MU_UNSAFE.to(z.device))
+        + GAMMA * cosine(z, _CACHED_MU_RETHINK.to(z.device))
     )
 
 @torch.no_grad()
@@ -73,6 +78,7 @@ def consistency_reward(p_latent: torch.Tensor, p_text: torch.Tensor) -> torch.Te
 
 def calculate_latent(input_ids, attention_mask, config):
     global _CACHED_MODEL, _CACHED_PROJECTION_HEAD, _CACHED_SAFETY_HEAD, _CACHED_MODEL_PATH
+    global _CACHED_MU_SAFE, _CACHED_MU_UNSAFE, _CACHED_MU_RETHINK
 
     if input_ids.dim() == 1:
         input_ids = input_ids.unsqueeze(0)
@@ -103,6 +109,15 @@ def calculate_latent(input_ids, attention_mask, config):
         _CACHED_PROJECTION_HEAD = projection_head
         _CACHED_SAFETY_HEAD = safety_head
         print("✅ Loaded pretrained ProjectionHead and SafetyHead (cached).")
+
+    if _CACHED_MU_SAFE is None:
+        import os
+        base_dir = os.path.dirname(config.safety_ckpt_path)
+        print(f"🔄 Loading prototype vectors from {base_dir}...")
+        _CACHED_MU_SAFE = torch.from_numpy(np.load(os.path.join(base_dir, "mu_safe.npy"))).float()
+        _CACHED_MU_UNSAFE = torch.from_numpy(np.load(os.path.join(base_dir, "mu_unsafe.npy"))).float()
+        _CACHED_MU_RETHINK = torch.from_numpy(np.load(os.path.join(base_dir, "mu_rethink.npy"))).float()
+        print("✅ Prototypes loaded and cached.")
 
     if _CACHED_MODEL is None or _CACHED_MODEL_PATH != config.model_path:
         print(f"🔄 Loading model: {config.model_path}...")
@@ -142,56 +157,34 @@ def calculate_latent(input_ids, attention_mask, config):
 # ------------- EasyR1 entry point -------------
 def compute_score(reward_inputs: list[dict[str, Any]]) -> list[dict[str, float]]:
     """
-    Each item in reward_inputs should include:
-        {
-           response: str
-        p_text: float
-        input_ids: torch.Tensor
-        attention_mask: torch.Tensor
-        response_ids: torch.Tensor
-        response_mask: torch.Tensor
-        response_length: int
-            }
-    Returns: list of dicts with reward components and overall reward.
+    批量计算 reward，一次性做模型前向推理，避免逐样本推理的性能开销。
     """
     if not isinstance(reward_inputs, list):
         raise ValueError("Please call with reward_type=batch in EasyR1.")
 
+    # 批量收集所有输入，一次性做模型前向推理
+    all_input_ids = torch.stack([r["input_ids"] for r in reward_inputs])
+    all_attention_mask = torch.stack([r["attention_mask"] for r in reward_inputs])
+    config = reward_inputs[0]["config"]
+
+    h_mean, z, p_latent = calculate_latent(all_input_ids, all_attention_mask, config)
+
     results = []
-    for r in reward_inputs:
-        # Extract
-        h_mean, z, p_latent = calculate_latent(r["input_ids"], r["attention_mask"], r["config"])
-        p_text   = torch.tensor(r.get("p_text", 0.0))
+    for i, r in enumerate(reward_inputs):
+        p_text = torch.tensor(r.get("p_text", 0.0), dtype=torch.float32)
 
-        R_lat = []
-        R_con = []
-        #print("Z_org:", z)
-        for i in range(len(h_mean)):
-            z_sentence = torch.tensor(z[i], dtype=torch.float32)
-            p_latent_sentence = torch.tensor(p_latent[i], dtype=torch.float32)[0]
-            R_lat_sentence = latent_reward(z_sentence)
-            R_con_sentence = consistency_reward(p_latent_sentence, p_text)
-            R_lat.append(R_lat_sentence)
-            R_con.append(R_con_sentence)
-        R_lat = torch.tensor(R_lat, dtype=torch.float32)
-        R_con = torch.tensor(R_con, dtype=torch.float32)
-        R_lat = R_lat.mean()
-        R_con = R_con.mean()
+        # 取第 i 个样本的特征
+        z_i = z[i].float()                   # [512]
+        p_latent_i = p_latent[i].float()[0]  # 取 safe 类概率
 
-
-
-        # Compute each reward term
-        
+        R_lat = latent_reward(z_i)
+        R_con = consistency_reward(p_latent_i, p_text)
         R_txt = text_reward(p_text)
-        
-        # R_hlp = helpfulness_reward(is_benign, help_score)
 
-        # Combine (scalar)
         R_total = (
             W_LATENT * R_lat
             + W_TEXT * R_txt
             + W_CONS * R_con
-
         )
 
         results.append({
@@ -199,7 +192,6 @@ def compute_score(reward_inputs: list[dict[str, Any]]) -> list[dict[str, float]]
             "R_latent": float(R_lat.item()),
             "R_text": float(R_txt.item()),
             "R_cons": float(R_con.item()),
-
         })
 
     return results

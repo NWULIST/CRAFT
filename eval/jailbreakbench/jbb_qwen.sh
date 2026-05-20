@@ -6,7 +6,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH:-}"
 cd "$PROJECT_ROOT"
 
-export OPENAI_API_KEY=REDACTED_OPENAI_KEY
+export OPENAI_API_KEY="${OPENAI_API_KEY:?set this to your OpenAI key for GPT-based eval}"
 export HF_HOME="/projects/p32013/.cache/"
 export TOGETHER_API_KEY=tgp_v1_8Gfeb1DZcPh6V3YqJlrm_N5xH1wXhogbDm1QRAMFVfo
 # 只加载 CUDA 12（vLLM 需要 libcudart.so.12）

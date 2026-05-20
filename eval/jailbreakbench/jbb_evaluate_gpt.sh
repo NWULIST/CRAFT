@@ -4,7 +4,7 @@ set -x
 cd /projects/p32013/neurons/RA-GRPO
 
 # 设置 OpenAI API key（使用你在 JBB_qwen.sh 中设置的 key）
-export OPENAI_API_KEY="REDACTED_OPENAI_KEY"
+export OPENAI_API_KEY="${OPENAI_API_KEY:?set this to your OpenAI key for GPT-based eval}"
 
 # 使用 jailbreakbench conda 环境
 PYTHON_BIN="/projects/p32013/conda_envs/jailbreakbench/bin/python3"

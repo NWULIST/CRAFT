@@ -6,7 +6,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 export PYTHONPATH="$PROJECT_ROOT:${PYTHONPATH:-}"
 cd "$PROJECT_ROOT"
 
-export OPENAI_API_KEY=REDACTED_OPENAI_KEY
+export OPENAI_API_KEY="${OPENAI_API_KEY:?set this to your OpenAI key for GPT-based eval}"
 module load cuda/12.4.0-gcc-12.4.0
 module load gcc/12.4.0-gcc-8.5.0
 module load cudnn/8.9.7.29-12-cuda-gcc-12.4.0

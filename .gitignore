@@ -45,5 +45,4 @@ docs/superpowers/plans/_*.txt
 *.npy
 *.npz
 
-# Keep some pdfs (paper PDFs in baselines/ are upstream references)
-# Don't blanket-ignore *.pdf.
+# Don't blanket-ignore *.pdf (paper PDFs may be present in the repo).

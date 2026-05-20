@@ -1,8 +1,0 @@
-pandas
-datasets
-torch
-requests
-tenacity
-openai
-anthropic
-google-generativeai

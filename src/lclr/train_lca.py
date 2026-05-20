@@ -8,7 +8,7 @@ import json
 import torch
 import numpy as np
 from sklearn.model_selection import train_test_split
-from LCA import train_latent_contrastive
+from lca import train_latent_contrastive
 import argparse
 import os
 import wandb

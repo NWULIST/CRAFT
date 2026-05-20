@@ -1,0 +1,8 @@
+torch>=2.4
+transformers>=4.54
+huggingface_hub>=0.24
+numpy
+pandas
+scikit-learn
+tqdm
+wandb

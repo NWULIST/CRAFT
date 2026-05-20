@@ -1,84 +1,134 @@
-# CRAFT: Contrastive Reasoning Alignment
+# CRAFT: Contrastive Reasoning Alignment — Reinforcement Learning from Hidden Representations
 
-> Reinforcement Learning from Hidden Representations
-> **ICML 2026** · [paper (arXiv:2603.17305)](https://arxiv.org/abs/2603.17305)
+[![ICML 2026](https://img.shields.io/badge/ICML-2026-blue)](https://icml.cc)
+[![arXiv](https://img.shields.io/badge/arXiv-2603.17305-b31b1b)](https://arxiv.org/abs/2603.17305)
+[![License](https://img.shields.io/badge/license-Apache--2.0-green)](LICENSE)
 
-CRAFT is a red-teaming alignment framework that mitigates *superficial safety alignment* (SSA) in large reasoning models. Instead of operating at the output level, CRAFT (a) structures the latent space of reasoning traces via contrastive learning, and (b) applies GRPO with a latent-aware reward that aligns intermediate reasoning states with the final response.
+CRAFT is a two-phase alignment framework that mitigates *superficial safety alignment* (SSA) in large reasoning models. Rather than operating at the output level, CRAFT (1) structures the latent space of reasoning traces via contrastive learning (LCLR), and (2) applies GRPO with a latent-aware reward that aligns intermediate reasoning states with the final response (R²L).
 
 ![CRAFT pipeline](docs/figures/pipeline.png)
 
-## Highlights (vs. base models)
+## Key Results
 
-| Metric | Improvement |
+| Metric | Improvement over base model |
 | --- | --- |
-| Reasoning-trace safety | **+82.1 %** (avg) |
-| Final-response safety | **+89.6 %** (avg) |
-| Reasoning ability (math + code) | **+8.0 %** (avg) |
+| Reasoning-trace safety | **+82.1%** (avg across models) |
+| Final-response safety | **+89.6%** (avg across models) |
+| Reasoning ability (math + code) | **+8.0%** (avg across models) |
 
-Full results across DeepSeek-R1-Distill-Llama-8B and Qwen3-4B-Thinking on JailbreakBench, StrongReject, AIME24, MATH-500, Minerva, and LiveCodeBench: see [`docs/reproducibility.md`](docs/reproducibility.md) and the paper.
+Evaluated on DeepSeek-R1-Distill-Llama-8B and Qwen3-4B-Thinking across JailbreakBench, StrongReject, AIME24, MATH-500, Minerva, and LiveCodeBench. Full tables and reproduction steps: [`docs/reproducibility.md`](docs/reproducibility.md).
 
-## Repository layout
+## Repository Layout
 
 ```
-src/
-  lclr/        Phase 1 — Latent Contrastive Learning for Reasoning (§4.1)
-  r2l/         Phase 2 — Reinforcement over Reasoning Latents (§4.2, vLLM-based)
-eval/          JailbreakBench, StrongReject, advanced-attack pointers
-docs/          Reproducibility guide and figures
+CRAFT/
+├── config.yaml                    # Fill in your credentials/paths (gitignored)
+├── requirements.txt               # Top-level dependencies
+│
+├── src/
+│   ├── lclr/                      # Phase 1: Latent Contrastive Learning for Reasoning
+│   │   ├── train_lca.py           # LCLR training entry point
+│   │   ├── evaluate_lca.py        # Evaluation of learned heads
+│   │   ├── lca.py                 # ProjectionHead, SafetyHead, training loop
+│   │   └── requirements.txt
+│   │
+│   └── r2l/                       # Phase 2: Reinforcement over Reasoning Latents
+│       ├── examples/
+│       │   ├── scripts/
+│       │   │   ├── train_qwen3_4b_thinking.sh   # Main training script
+│       │   │   └── train_ablation.sh             # Table 3 ablation
+│       │   ├── configs/
+│       │   │   ├── config_qwen3_4b_thinking.yaml # Main config
+│       │   │   └── config_ablation.yaml          # Ablation config (Table 3)
+│       │   └── reward_function/
+│       │       ├── reasoning_trace.py            # CRAFT reward (R_lat + R_txt + R_cons)
+│       │       └── reasoning_trace_ablation.py   # Ablation reward (config-driven weights)
+│       ├── verl/                  # Modified EasyR1/veRL GRPO trainer
+│       └── Dockerfile
+│
+├── eval/
+│   ├── jailbreakbench/
+│   │   ├── jbb_qwen.py            # JailbreakBench inference + scoring
+│   │   └── jbb_qwen.sh            # Launcher (reads config.yaml)
+│   ├── strongreject/              # Vendored StrongReject autograder
+│   └── advanced_attacks.md        # GPTFuzzer and AutoDAN pointers
+│
+└── docs/
+    ├── figures/
+    └── reproducibility.md         # Per-table reproduction commands
 ```
 
-## Quickstart
+## Setup
 
-### Setup
+### Option A — Conda
 
 ```bash
-# Conda
-conda create -n craft python=3.10 -y
-conda activate craft
+conda create -n craft python=3.10 -y && conda activate craft
 pip install -r requirements.txt
 pip install -r src/lclr/requirements.txt
 pip install -e src/r2l   # installs the modified veRL trainer
-
-# Or Docker
-docker build -t craft src/r2l
 ```
 
-You will need a Hugging Face account (login via `huggingface-cli login`) to download the base models and the `chuhac/R2D-R1` dataset. GPT-based safety eval also requires `OPENAI_API_KEY`.
-
-### Three commands to reproduce the pipeline
+### Option B — Docker (R²L training only)
 
 ```bash
-# 1. Phase 1: train Latent Contrastive Learning heads on R2D-R1 (~30 min on 1× A100)
-cd src/lclr && python train_lca.py --data_path chuhac/R2D-R1 --model_name Qwen/Qwen3-4B-Thinking-2507 --output_dir ../../outputs/lclr
+docker build -t craft src/r2l
+docker run --gpus all -it craft bash
+```
 
-# 2. Phase 2: R²L training (4× A100 80GB, ~14h for Qwen3-4B-Thinking)
+The Docker image is based on `nvcr.io/nvidia/pytorch:25.05-py3` (CUDA 12.9).
+
+### Credentials and paths
+
+Copy and fill in `config.yaml` at the repo root before running evaluation:
+
+```yaml
+credentials:
+  openai_api_key: ""        # GPT-based JBB judge
+  huggingface_token: ""     # For gated HF models (optional)
+
+paths:
+  craft_model: "./checkpoints/qwen3_4b_thinking_craft"
+  lclr_dir: "./outputs/lclr"
+  eval_output: "./outputs/eval"
+```
+
+You also need a Hugging Face account (`huggingface-cli login`) to download base models and the `chuhac/R2D-R1` dataset.
+
+## Reproducing the Paper
+
+```bash
+# Phase 1 — Train LCLR heads (~30 min, 1× A100 40GB)
+cd src/lclr && python train_lca.py \
+  --data_path chuhac/R2D-R1 \
+  --model_name Qwen/Qwen3-4B-Thinking-2507 \
+  --output_dir ../../outputs/lclr
+
+# Phase 2 — R²L training (~14h, 4× A100 80GB)
 bash src/r2l/examples/scripts/train_qwen3_4b_thinking.sh
 
-# 3. Evaluation: JailbreakBench + StrongReject
+# Evaluation — JailbreakBench
 bash eval/jailbreakbench/jbb_qwen.sh
 ```
 
-See [`docs/reproducibility.md`](docs/reproducibility.md) for the exact hardware, seeds, and per-table reproduction steps.
+See [`docs/reproducibility.md`](docs/reproducibility.md) for hardware details, random seeds, and all per-table commands.
 
-## Citing CRAFT
+## Citation
 
 ```bibtex
 @inproceedings{luo2026craft,
-  title   = {Contrastive Reasoning Alignment: Reinforcement Learning from Hidden Representations},
-  author  = {Luo, Haozheng and Wang, Yimin and Yu, Jiahao and Wang, Binghui and Chen, Yan},
+  title     = {Contrastive Reasoning Alignment: Reinforcement Learning from Hidden Representations},
+  author    = {Luo, Haozheng and Wang, Yimin and Yu, Jiahao and Wang, Binghui and Chen, Yan},
   booktitle = {Proceedings of the 43rd International Conference on Machine Learning},
-  year    = {2026},
-  series  = {PMLR},
-  volume  = {306},
+  year      = {2026},
+  series    = {PMLR},
+  volume    = {306},
 }
 ```
 
-## License & attribution
+## License
 
-Apache-2.0 (see [`LICENSE`](LICENSE)). CRAFT builds on:
-
-- [EasyR1](https://github.com/hiyouga/EasyR1) / [veRL](https://github.com/volcengine/verl) (Apache-2.0) — modified GRPO trainer under `src/r2l/verl/`
-See [`NOTICE`](NOTICE) for the full attribution list.
+Apache-2.0 (see [`LICENSE`](LICENSE)). CRAFT builds on [EasyR1](https://github.com/hiyouga/EasyR1) / [veRL](https://github.com/volcengine/verl) (Apache-2.0) — see [`NOTICE`](NOTICE) for full attributions.
 
 ## Contact
 

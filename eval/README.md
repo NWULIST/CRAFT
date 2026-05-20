@@ -13,15 +13,22 @@ CRAFT is evaluated along two axes:
 
 ### JailbreakBench (final-response + reasoning safety)
 
-```bash
-# Replace MODEL_PATH with your CRAFT checkpoint (or HF id).
-export MODEL_PATH=./checkpoints/qwen3_4b_thinking_craft/global_step_N/actor
-bash jailbreakbench/jbb_qwen.sh "$MODEL_PATH"
+The shell wrapper invokes `jbb_qwen.py` with a checkpoint path hard-coded
+near the top of the Python file:
+
+```python
+MODEL_PATH = "./checkpoints/qwen3_4b_thinking_craft"
 ```
 
-`jbb_qwen.sh` runs JBB-Behaviors (harmful split). To score the reasoning
-trace separately, pass `--target reasoning`. See `jailbreakbench/jbb_qwen.py`
-flags.
+Edit `MODEL_PATH` to point at your CRAFT checkpoint, then:
+
+```bash
+bash jailbreakbench/jbb_qwen.sh
+```
+
+The script produces per-prompt responses; `jbb_qwen.py` returns each
+response with its reasoning trace, so the StrongReject pass below scores
+both the final answer and the `<think>...</think>` segment.
 
 ### StrongReject
 

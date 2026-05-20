@@ -20,4 +20,4 @@ echo "Using Python: $PYTHON_BIN"
 $PYTHON_BIN --version
 
 # 运行 JailbreakBench 评估脚本
-$PYTHON_BIN baseline/JBB_qwen.py
+$PYTHON_BIN "$SCRIPT_DIR/jbb_qwen.py"

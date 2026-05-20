@@ -59,7 +59,7 @@ python src/r2l/scripts/model_merger.py --local_dir ./checkpoints/<EXP>/global_st
 
 # 3. Evaluate
 bash eval/jailbreakbench/jbb_qwen.sh  # edit MODEL_PATH in jbb_qwen.py first
-python eval/strongreject/StrongReject.py --responses <output_from_jbb>.jsonl
+python -c "from strongreject.evaluate import evaluate; import json, sys; data=json.load(open(sys.argv[1])); [print(evaluate(r['forbidden_prompt'],r['response'])) for r in data]" <output_from_jbb>.json
 ```
 
 ### Table 2 — Reasoning capability (paper §6.2)

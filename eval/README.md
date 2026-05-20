@@ -30,16 +30,17 @@ The script produces per-prompt responses; `jbb_qwen.py` returns each
 response with its reasoning trace, so the StrongReject pass below scores
 both the final answer and the `<think>...</think>` segment.
 
-### StrongReject
+### StrongReject autograder
 
-`eval/strongreject/` is a copy of [StrongReject](https://github.com/alexandrasouly/strongreject).
-The headline score `P(S|y)` is produced by their GPT-4o evaluator; this
-requires `OPENAI_API_KEY`.
+We use the upstream [StrongReject](https://github.com/dsbowen/strong_reject) autograder to score model responses generated against JailbreakBench prompts. Install the library, then call its evaluator on your model's responses:
 
-```bash
-export OPENAI_API_KEY="..."
-python eval/strongreject/StrongReject.py --responses <your_jbb_responses.jsonl>
+```python
+from strongreject.evaluate import evaluate
+# responses: list of {"forbidden_prompt": str, "response": str}
+scores = [evaluate(r["forbidden_prompt"], r["response"]) for r in responses]
 ```
+
+See `eval/strongreject/strongreject/` for the vendored copy of the library and `eval/strongreject/strongreject_dataset/` for the small evaluation set.
 
 ## Advanced jailbreak robustness (paper §6.3, Fig. 4)
 

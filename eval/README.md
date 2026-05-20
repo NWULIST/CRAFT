@@ -13,16 +13,18 @@ CRAFT is evaluated along two axes:
 
 ### JailbreakBench (final-response + reasoning safety)
 
-Set `paths.craft_model` in `config.yaml` at the repo root to point at your
-CRAFT checkpoint, then:
+1. Fill in `config.yaml` at the repo root (`paths.craft_model`, `paths.eval_output`,
+   and optionally `credentials.openai_api_key`).
+2. Run:
 
 ```bash
 bash eval/jailbreakbench/jbb_qwen.sh
 ```
 
-The script produces per-prompt responses; `jbb_qwen.py` returns each
-response with its reasoning trace, so the StrongReject pass below scores
-both the final answer and the `<think>...</think>` segment.
+The script writes per-prompt responses (including the `<think>...</think>`
+reasoning trace) to `<eval_output>/jailbreakbench/responses.json`.
+The StrongReject pass below can score both the final answer and the
+reasoning trace from that file.
 
 ### StrongReject autograder
 

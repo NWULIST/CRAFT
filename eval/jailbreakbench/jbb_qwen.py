@@ -7,6 +7,8 @@ Uses transformers to load the model (avoids vLLM compatibility issues).
 import os
 import json
 import glob
+import pathlib
+import yaml
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
@@ -14,8 +16,18 @@ import jailbreakbench as jbb
 from jailbreakbench.classifier import Llama3JailbreakJudge, Llama3RefusalJudge, StringClassifier
 from jailbreakbench.config import TEMPERATURE, TOP_P, MAX_GENERATION_LENGTH
 
-# Model path (can be a local path or a HuggingFace model ID)
-MODEL_PATH = "./checkpoints/qwen3_4b_thinking_craft"  # local path or HF model ID
+# Load paths/credentials from config.yaml at the repo root (two levels up from this file)
+_CFG_PATH = pathlib.Path(__file__).parent.parent.parent / "config.yaml"
+if _CFG_PATH.exists():
+    _cfg = yaml.safe_load(_CFG_PATH.read_text())
+    MODEL_PATH = _cfg.get("paths", {}).get("craft_model", "./checkpoints/qwen3_4b_thinking_craft")
+    EVAL_OUTPUT_DIR = _cfg.get("paths", {}).get("eval_output", "./outputs/eval")
+    _OPENAI_KEY = _cfg.get("credentials", {}).get("openai_api_key", "")
+    if _OPENAI_KEY:
+        os.environ.setdefault("OPENAI_API_KEY", _OPENAI_KEY)
+else:
+    MODEL_PATH = os.environ.get("CRAFT_MODEL_PATH", "./checkpoints/qwen3_4b_thinking_craft")
+    EVAL_OUTPUT_DIR = os.environ.get("CRAFT_EVAL_OUTPUT", "./outputs/eval")
 
 # API key (used for judge evaluation)
 API_KEY = os.environ.get("TOGETHER_API_KEY") or os.environ.get("OPENAI_API_KEY")
@@ -109,7 +121,7 @@ print("Query complete!")
 
 # Save model responses first (so results are accessible even if evaluation fails)
 print("\n=== Saving Model Responses ===")
-responses_output_path = "./outputs/eval/jailbreakbench/jbb_reasoningshield_qwen_responses.json"
+responses_output_path = os.path.join(EVAL_OUTPUT_DIR, "jailbreakbench", "responses.json")
 os.makedirs(os.path.dirname(responses_output_path), exist_ok=True)
 with open(responses_output_path, "w", encoding="utf-8") as f:
     json.dump({

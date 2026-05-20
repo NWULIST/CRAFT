@@ -14,5 +14,5 @@ echo "Using Python: $PYTHON_BIN"
 $PYTHON_BIN --version
 
 # 运行评估脚本
-$PYTHON_BIN baseline/JBB_evaluate.py
+$PYTHON_BIN jbb_evaluate.py
 

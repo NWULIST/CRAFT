@@ -14,5 +14,5 @@ echo "Using Python: $PYTHON_BIN"
 $PYTHON_BIN --version
 
 # 运行 GPT-4o 评估脚本
-$PYTHON_BIN baseline/JBB_evaluate_gpt.py
+$PYTHON_BIN jbb_evaluate_gpt.py
 

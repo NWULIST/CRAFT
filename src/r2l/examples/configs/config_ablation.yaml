@@ -87,6 +87,10 @@ worker:
     projection_ckpt_path: ./outputs/lclr/projection_head.pt
     safety_ckpt_path: ./outputs/lclr/safety_head.pt
     projection_dim: 512
+    # Table 3 ablation switches. Set any of these to 0.0 to ablate that reward term.
+    w_lat: 0.5
+    w_text: 0.4
+    w_cons: 0.2
     model_path: Qwen/Qwen3-4B-Thinking-2507
     num_gpus: 1
 

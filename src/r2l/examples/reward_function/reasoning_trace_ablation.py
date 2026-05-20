@@ -25,8 +25,22 @@ _CACHED_PROJECTION_HEAD = None
 _CACHED_SAFETY_HEAD = None
 _CACHED_MODEL_PATH = None
 
+_CACHED_MU_SAFE = None
+_CACHED_MU_UNSAFE = None
+_CACHED_MU_RETHINK = None
+
 def cosine(z, mu):
     return (F.normalize(z, dim=-1) * F.normalize(mu, dim=-1)).sum(-1)
+
+
+@torch.no_grad()
+def latent_reward(z: torch.Tensor) -> torch.Tensor:
+    global _CACHED_MU_SAFE, _CACHED_MU_UNSAFE, _CACHED_MU_RETHINK
+    return (
+        ALPHA * cosine(z, _CACHED_MU_SAFE.to(z.device))
+        - BETA * cosine(z, _CACHED_MU_UNSAFE.to(z.device))
+        + GAMMA * cosine(z, _CACHED_MU_RETHINK.to(z.device))
+    )
 
 
 class ProjectionHead(nn.Module):
@@ -64,6 +78,7 @@ def consistency_reward(p_latent: torch.Tensor, p_text: torch.Tensor) -> torch.Te
 
 def calculate_latent(input_ids, attention_mask, config):
     global _CACHED_MODEL, _CACHED_PROJECTION_HEAD, _CACHED_SAFETY_HEAD, _CACHED_MODEL_PATH
+    global _CACHED_MU_SAFE, _CACHED_MU_UNSAFE, _CACHED_MU_RETHINK
 
     if input_ids.dim() == 1:
         input_ids = input_ids.unsqueeze(0)
@@ -94,6 +109,14 @@ def calculate_latent(input_ids, attention_mask, config):
         _CACHED_PROJECTION_HEAD = projection_head
         _CACHED_SAFETY_HEAD = safety_head
         print("✅ Loaded pretrained ProjectionHead and SafetyHead (cached).")
+
+    if _CACHED_MU_SAFE is None:
+        base_dir = os.path.dirname(config.safety_ckpt_path)
+        print(f"Loading prototype vectors from {base_dir}...")
+        _CACHED_MU_SAFE = torch.from_numpy(np.load(os.path.join(base_dir, "mu_safe.npy"))).float()
+        _CACHED_MU_UNSAFE = torch.from_numpy(np.load(os.path.join(base_dir, "mu_unsafe.npy"))).float()
+        _CACHED_MU_RETHINK = torch.from_numpy(np.load(os.path.join(base_dir, "mu_rethink.npy"))).float()
+        print("Prototypes loaded and cached.")
 
     if _CACHED_MODEL is None or _CACHED_MODEL_PATH != config.model_path:
         print(f"🔄 Loading model: {config.model_path}...")
@@ -155,23 +178,31 @@ def compute_score(reward_inputs: list[dict[str, Any]]) -> list[dict[str, float]]
 
     h_mean, z, p_latent = calculate_latent(all_input_ids, all_attention_mask, config)
 
+    w_lat = getattr(config, "w_lat", W_LATENT)
+    w_text = getattr(config, "w_text", W_TEXT)
+    w_cons = getattr(config, "w_cons", W_CONS)
+
     results = []
     for i, r in enumerate(reward_inputs):
         p_text = torch.tensor(r.get("p_text", 0.0), dtype=torch.float32)
 
         # 取第 i 个样本的特征
+        z_i = z[i].float()                   # [512]
         p_latent_i = p_latent[i].float()[0]  # 取 safe 类概率
 
+        R_lat = latent_reward(z_i)
         R_con = consistency_reward(p_latent_i, p_text)
         R_txt = text_reward(p_text)
 
         R_total = (
-            W_CONS * R_con
-            + W_TEXT * R_txt
+            w_lat * R_lat
+            + w_text * R_txt
+            + w_cons * R_con
         )
 
         results.append({
             "overall": float(R_total.item()),
+            "R_latent": float(R_lat.item()),
             "R_text": float(R_txt.item()),
             "R_cons": float(R_con.item()),
         })

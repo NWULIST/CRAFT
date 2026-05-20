@@ -5,13 +5,14 @@ set -euo pipefail
 # 论文参数：Table 11 - Training Details of ReasoningShield
 
 # 基础路径
-ROOT_DIR="."
-DATASET_DIR="${ROOT_DIR}/baseline/reasoningshield/ReasoningShield/reasoningshield_Dataset/reasoningshield-train"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${SCRIPT_DIR}/../../.."  # repo root (CRAFT/)
+DATASET_DIR="${ROOT_DIR}/baselines/reasoningshield/ReasoningShield/reasoningshield_Dataset/reasoningshield-train"
 
 # 模型与输出目录
 MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3-4B-Thinking}"
-OUTPUT_DIR_SFT="${OUTPUT_DIR_SFT:-${ROOT_DIR}/baseline/reasoningshield/ReasoningShield/outputs/qwen3-4b-thinking_sft_8a800}"
-OUTPUT_DIR_DPO="${OUTPUT_DIR_DPO:-${ROOT_DIR}/baseline/reasoningshield/ReasoningShield/outputs/qwen3-4b-thinking_dpo_8a800}"
+OUTPUT_DIR_SFT="${OUTPUT_DIR_SFT:-${ROOT_DIR}/baselines/reasoningshield/ReasoningShield/outputs/qwen3-4b-thinking_sft_8a800}"
+OUTPUT_DIR_DPO="${OUTPUT_DIR_DPO:-${ROOT_DIR}/baselines/reasoningshield/ReasoningShield/outputs/qwen3-4b-thinking_dpo_8a800}"
 
 # 多GPU训练：使用 torchrun 启动，自动使用所有可见GPU
 # 如果只想使用8张GPU，可以设置: CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7

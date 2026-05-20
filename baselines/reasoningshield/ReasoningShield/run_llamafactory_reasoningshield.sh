@@ -2,13 +2,14 @@
 set -euo pipefail
 
 # 基础路径
-ROOT_DIR="."
-DATASET_DIR="${ROOT_DIR}/baseline/reasoningshield/ReasoningShield/reasoningshield_Dataset/reasoningshield-train"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="${SCRIPT_DIR}/../../.."  # repo root (CRAFT/)
+DATASET_DIR="${ROOT_DIR}/baselines/reasoningshield/ReasoningShield/reasoningshield_Dataset/reasoningshield-train"
 
 # 模型与输出目录（如模型名不同，可修改 MODEL_NAME）
 MODEL_NAME="${MODEL_NAME:-Qwen/Qwen3-4B-Thinking}"
-OUTPUT_DIR_SFT="${OUTPUT_DIR_SFT:-${ROOT_DIR}/baseline/reasoningshield/ReasoningShield/outputs/qwen3-4b-thinking_sft}"
-OUTPUT_DIR_DPO="${OUTPUT_DIR_DPO:-${ROOT_DIR}/baseline/reasoningshield/ReasoningShield/outputs/qwen3-4b-thinking_dpo}"
+OUTPUT_DIR_SFT="${OUTPUT_DIR_SFT:-${ROOT_DIR}/baselines/reasoningshield/ReasoningShield/outputs/qwen3-4b-thinking_sft}"
+OUTPUT_DIR_DPO="${OUTPUT_DIR_DPO:-${ROOT_DIR}/baselines/reasoningshield/ReasoningShield/outputs/qwen3-4b-thinking_dpo}"
 
 # 单卡训练配置（GH200 96GB）
 # 论文使用 8 张 A800，有效 batch size = 2 × 8 × 8 = 128

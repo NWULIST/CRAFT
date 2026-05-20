@@ -50,9 +50,7 @@ You will need a Hugging Face account (login via `huggingface-cli login`) to down
 
 ```bash
 # 1. Phase 1: train Latent Contrastive Learning heads on R2D-R1 (~30 min on 1× A100)
-python -m src.lclr.train_lca \
-    --data_path chuhac/R2D-R1 \
-    --output_dir ./outputs/lclr
+cd src/lclr && python train_lca.py --data_path chuhac/R2D-R1 --model_name Qwen/Qwen3-4B-Thinking-2507 --output_dir ../../outputs/lclr
 
 # 2. Phase 2: R²L training (4× A100 80GB, ~14h for Qwen3-4B-Thinking)
 bash src/r2l/examples/scripts/train_qwen3_4b_thinking.sh

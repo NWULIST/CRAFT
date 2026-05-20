@@ -15,10 +15,9 @@ W_CONS   = 0.2
 # LAMBDA_KL = 0.02
 ALPHA, BETA, GAMMA = 1.0, 1.0, 0.5
 
-# Precomputed prototypes from Step 7
-MU_SAFE   = torch.from_numpy(np.load("./outputs/lclr/qwen/mu_safe.npy")).float()
-MU_UNSAFE = torch.from_numpy(np.load("./outputs/lclr/qwen/mu_unsafe.npy")).float()
-MU_RETHINK= torch.from_numpy(np.load("./outputs/lclr/qwen/mu_rethink.npy")).float()
+# Prototype paths default to ./outputs/lclr/ (see src/lclr/train_lca.py).
+# Override via config: worker.reward.projection_ckpt_path / safety_ckpt_path
+# (the directory containing these two .pt files is the same as mu_*.npy).
 
 # ------------- Global model cache (load once) -------------
 _CACHED_MODEL = None
@@ -53,14 +52,6 @@ class SafetyHead(nn.Module):
 
 
 
-
-@torch.no_grad()
-def latent_reward(z: torch.Tensor) -> torch.Tensor:
-    return (
-        ALPHA * cosine(z, MU_SAFE)
-        - BETA * cosine(z, MU_UNSAFE)
-        + GAMMA * cosine(z, MU_RETHINK)
-    )
 
 @torch.no_grad()
 def text_reward(p_safe_text: torch.Tensor) -> torch.Tensor:

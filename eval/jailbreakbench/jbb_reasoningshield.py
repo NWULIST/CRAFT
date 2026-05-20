@@ -89,7 +89,8 @@ print("查询完成!")
 
 # 保存模型响应
 print("\n=== 保存模型响应 ===")
-responses_output_path = "baseline/response/jbb_reasoningshield_llama_responses.json"
+responses_output_path = "./outputs/eval/jailbreakbench/jbb_reasoningshield_llama_responses.json"
+os.makedirs(os.path.dirname(responses_output_path), exist_ok=True)
 with open(responses_output_path, "w", encoding="utf-8") as f:
     json.dump({
         "base_model": BASE_MODEL_PATH,

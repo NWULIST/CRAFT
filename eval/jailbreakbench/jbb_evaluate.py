@@ -10,8 +10,8 @@ import abc
 import litellm
 
 # 配置
-RESPONSES_PATH = "baseline/jbb_qwen_responses.json"
-OUTPUT_PATH = "baseline/jbb_qwen_eval_results.json"
+RESPONSES_PATH = "./outputs/eval/jailbreakbench/jbb_qwen_responses.json"
+OUTPUT_PATH = "./outputs/eval/jailbreakbench/jbb_qwen_eval_results.json"
 
 # Together API key
 API_KEY = os.environ.get("TOGETHER_API_KEY")
@@ -219,6 +219,7 @@ for i in range(total):
         "refusal": is_refusal[i]
     })
 
+os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
 with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
     json.dump({
         "model_path": model_path,

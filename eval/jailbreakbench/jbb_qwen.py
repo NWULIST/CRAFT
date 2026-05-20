@@ -109,7 +109,8 @@ print("查询完成!")
 
 # 先保存模型响应（即使评估失败也能看到结果）
 print("\n=== 保存模型响应 ===")
-responses_output_path = "baseline/response/jbb_reasoningshield_qwen_responses.json"
+responses_output_path = "./outputs/eval/jailbreakbench/jbb_reasoningshield_qwen_responses.json"
+os.makedirs(os.path.dirname(responses_output_path), exist_ok=True)
 with open(responses_output_path, "w", encoding="utf-8") as f:
     json.dump({
         "model_path": MODEL_PATH,
@@ -177,7 +178,7 @@ print(f"模型响应已保存到: {responses_output_path}")
 #         "refusal": is_refusal[i]
 #     })
 
-# output_path = "baseline/jbb_qwen_eval_results.json"
+# output_path = "./outputs/eval/jailbreakbench/jbb_qwen_eval_results.json"
 # with open(output_path, "w", encoding="utf-8") as f:
 #     json.dump({
 #         "model_path": MODEL_PATH,

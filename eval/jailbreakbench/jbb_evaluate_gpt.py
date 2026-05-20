@@ -11,8 +11,8 @@ from tqdm import tqdm
 from openai import OpenAI
 
 # 配置
-RESPONSES_PATH = "baseline/response/jbb_reasoningshield_qwen_responses.json"
-OUTPUT_PATH = "baseline/evaluation/jbb_our_qwen_eval_results_gpt.json"
+RESPONSES_PATH = "./outputs/eval/jailbreakbench/jbb_reasoningshield_qwen_responses.json"
+OUTPUT_PATH = "./outputs/eval/jailbreakbench/jbb_our_qwen_eval_results_gpt.json"
 
 # OpenAI API key
 API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -193,6 +193,7 @@ for i in range(min(5, total)):
     print(f"  -> Unsafe: {r['response_unsafe']} ({r['response_result']})")
 
 # 保存详细结果
+os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
 with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
     json.dump({
         "model": model_id,

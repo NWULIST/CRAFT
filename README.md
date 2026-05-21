@@ -130,7 +130,6 @@ If you use CRAFT in your work, please kindly cite our paper:
 @article{luo2026contrastive,
   title={Contrastive Reasoning Alignment: Reinforcement Learning from Hidden Representations},
   author={Luo, Haozheng and Wang, Yimin and Yu, Jiahao and Wang, Binghui and Chen, Yan},
-  journal={arXiv preprint arXiv:2603.17305},
   year={2026}
 }
 ```
